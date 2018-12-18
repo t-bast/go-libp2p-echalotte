@@ -38,9 +38,10 @@
       "version": "3.0.0"
     },
     {
-      "hash": "QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C",
-      "name": "go-log",
-      "version": "1.5.8"
+      "author": "whyrusleeping",
+      "hash": "QmZ9zH2FnLcxv1xyzFeUpDUeo55xEhZQHgveZijcxr7TLj",
+      "name": "go-libp2p-peerstore",
+      "version": "2.0.12"
     },
     {
       "author": "vyzo",
@@ -52,6 +53,11 @@
       "hash": "QmRASJXJUFygM5qU4YrH7k7jD6S4Hg8nJmgqJ4bYJvLatd",
       "name": "go-libp2p-routing",
       "version": "2.7.6"
+    },
+    {
+      "hash": "QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C",
+      "name": "go-log",
+      "version": "1.5.8"
     }
   ],
   "gxVersion": "0.14.0",
@@ -61,4 +67,3 @@
   "releaseCmd": "git commit -a -m \"gx publish $VERSION\"",
   "version": "0.0.0"
 }
-
