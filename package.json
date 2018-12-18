@@ -41,6 +41,17 @@
       "hash": "QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C",
       "name": "go-log",
       "version": "1.5.8"
+    },
+    {
+      "author": "vyzo",
+      "hash": "QmYJtCabf3prS3HKQUGgqDLVxvbT9iDx5mfeVfhtCcJxxE",
+      "name": "go-libp2p-discovery",
+      "version": "1.0.4"
+    },
+    {
+      "hash": "QmRASJXJUFygM5qU4YrH7k7jD6S4Hg8nJmgqJ4bYJvLatd",
+      "name": "go-libp2p-routing",
+      "version": "2.7.6"
     }
   ],
   "gxVersion": "0.14.0",
