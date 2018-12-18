@@ -74,6 +74,9 @@ func CircuitTimeout(timeout time.Duration) CircuitOption {
 	}
 }
 
+// Circuit can be used to create an onion-routed message.
+type Circuit []peer.ID
+
 // CircuitBuilder lets you build random circuits for onion routing.
 type CircuitBuilder struct {
 	discover discovery.Discoverer
@@ -97,7 +100,7 @@ func NewCircuitBuilder(ctx context.Context, discover discovery.Discovery) (*Circ
 }
 
 // Build a random circuit between network relay peers.
-func (cb *CircuitBuilder) Build(ctx context.Context, opts ...CircuitOption) ([]peer.ID, error) {
+func (cb *CircuitBuilder) Build(ctx context.Context, opts ...CircuitOption) (Circuit, error) {
 	options := &CircuitOptions{
 		Size:    DefaultCircuitSize,
 		Timeout: DefaultCircuitTimeout,
@@ -177,7 +180,7 @@ func (cb *CircuitBuilder) findRelays(
 }
 
 // selectRelays randomly selects a subset of the available relays.
-func (cb *CircuitBuilder) selectRelays(relays []peerstore.PeerInfo, count int) []peer.ID {
+func (cb *CircuitBuilder) selectRelays(relays []peerstore.PeerInfo, count int) Circuit {
 	seed, _ := crand.Int(crand.Reader, big.NewInt(1<<62))
 	rand.Seed(seed.Int64())
 	rand.Shuffle(len(relays), func(i, j int) { relays[i], relays[j] = relays[j], relays[i] })

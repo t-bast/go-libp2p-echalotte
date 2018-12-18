@@ -154,12 +154,12 @@ func TestCircuitBuilder(t *testing.T) {
 			discover.EXPECT().FindPeers(gomock.Any(), echalotte.OnionRelay, gomock.Any()).Return(relaysChan, nil)
 
 			c, err := cb.Build(context.Background(),
-				echalotte.CircuitSize(3),
+				echalotte.CircuitSize(5),
 				echalotte.CircuitTimeout(10*time.Millisecond),
 			)
 			require.NoError(t, err)
-			require.Len(t, c, 3)
-			assert.NotSubset(t, c, []peer.ID{peer.ID(0), peer.ID(1), peer.ID(2)})
+			require.Len(t, c, 5)
+			assert.NotSubset(t, c, []peer.ID{peer.ID(0), peer.ID(1), peer.ID(2), peer.ID(3), peer.ID(4)})
 		})
 	})
 }
