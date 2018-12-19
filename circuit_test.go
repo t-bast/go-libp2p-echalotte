@@ -13,8 +13,8 @@ import (
 	"github.com/t-bast/go-libp2p-echalotte"
 	"github.com/t-bast/go-libp2p-echalotte/mocks"
 
+	"gx/ipfs/QmPiemjiKBC9VA7vZF82m4x1oygtg2c2YVqag8PX7dN1BD/go-libp2p-peerstore"
 	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
-	"gx/ipfs/QmZ9zH2FnLcxv1xyzFeUpDUeo55xEhZQHgveZijcxr7TLj/go-libp2p-peerstore"
 )
 
 // Create a test circuit builder using the given discovery mock.

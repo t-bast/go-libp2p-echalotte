@@ -7,8 +7,8 @@ package mocks
 import (
 	context "context"
 	gomock "github.com/golang/mock/gomock"
-	go_libp2p_discovery "gx/ipfs/QmYJtCabf3prS3HKQUGgqDLVxvbT9iDx5mfeVfhtCcJxxE/go-libp2p-discovery"
-	go_libp2p_peerstore "gx/ipfs/QmZ9zH2FnLcxv1xyzFeUpDUeo55xEhZQHgveZijcxr7TLj/go-libp2p-peerstore"
+	go_libp2p_peerstore "gx/ipfs/QmPiemjiKBC9VA7vZF82m4x1oygtg2c2YVqag8PX7dN1BD/go-libp2p-peerstore"
+	go_libp2p_discovery "gx/ipfs/QmemYsfqwAbyvqwFiApk1GfLKhDkMm8ZQK6fCvzDbaRNyX/go-libp2p-discovery"
 	reflect "reflect"
 	time "time"
 )
