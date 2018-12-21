@@ -13,16 +13,13 @@ go build -o echalotte-node
 ### Create your own network
 
 To create your own network that supports onion routing, you'll need to start
-many nodes.
+many nodes (at least 20 for this example).
 
 Start a first bootstrap node:
 
 ```bash
 ./echalotte-node -listen /ip4/0.0.0.0/tcp/4001
 ```
-
-You will see some warnings because the DHT is unable to find other nodes to
-connect to. This is expected since you're currently the only node.
 
 You should see in the logs all the addresses the bootstrap node listens on.
 You can now choose one of these addresses and wrap it inside an ipfs one by
@@ -31,12 +28,15 @@ adding the node's peer ID.
 You can now start many other nodes using the first one to bootstrap:
 
 ```bash
-./echalotte-node -listen /ip4/0.0.0.0/tcp/4002 -peer /ip4/127.0.0.1/tcp/4001/ipfs/QmQqd1ydWGBbwLhrR2Kjmvx46qLf3GPrjmj55EW6N5CpNU
-./echalotte-node -listen /ip4/0.0.0.0/tcp/4003 -peer /ip4/127.0.0.1/tcp/4001/ipfs/QmQqd1ydWGBbwLhrR2Kjmvx46qLf3GPrjmj55EW6N5CpNU
-./echalotte-node -listen /ip4/0.0.0.0/tcp/4004 -peer /ip4/127.0.0.1/tcp/4001/ipfs/QmQqd1ydWGBbwLhrR2Kjmvx46qLf3GPrjmj55EW6N5CpNU
-./echalotte-node -listen /ip4/0.0.0.0/tcp/4005 -peer /ip4/127.0.0.1/tcp/4001/ipfs/QmQqd1ydWGBbwLhrR2Kjmvx46qLf3GPrjmj55EW6N5CpNU
-./echalotte-node -listen /ip4/0.0.0.0/tcp/4006 -peer /ip4/127.0.0.1/tcp/4001/ipfs/QmQqd1ydWGBbwLhrR2Kjmvx46qLf3GPrjmj55EW6N5CpNU
+./echalotte-node -peer /ip4/127.0.0.1/tcp/4001/ipfs/QmQqd1ydWGBbwLhrR2Kjmvx46qLf3GPrjmj55EW6N5CpNU -listen /ip4/0.0.0.0/tcp/4002
+./echalotte-node -peer /ip4/127.0.0.1/tcp/4001/ipfs/QmQqd1ydWGBbwLhrR2Kjmvx46qLf3GPrjmj55EW6N5CpNU -listen /ip4/0.0.0.0/tcp/4003
+./echalotte-node -peer /ip4/127.0.0.1/tcp/4001/ipfs/QmQqd1ydWGBbwLhrR2Kjmvx46qLf3GPrjmj55EW6N5CpNU -listen /ip4/0.0.0.0/tcp/4004
+./echalotte-node -peer /ip4/127.0.0.1/tcp/4001/ipfs/QmQqd1ydWGBbwLhrR2Kjmvx46qLf3GPrjmj55EW6N5CpNU -listen /ip4/0.0.0.0/tcp/4005
 ```
+
+Once enough nodes have been added and are connected to each other, the onion
+routing layer will initialize and generate a sample circuit that will be 
+printed to the console.
 
 ## Tips
 

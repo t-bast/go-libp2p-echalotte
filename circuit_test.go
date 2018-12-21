@@ -27,6 +27,15 @@ func newTestCircuitBuilder(t *testing.T, discover *mocks.MockDiscovery) *echalot
 	return cb
 }
 
+func TestCircuit(t *testing.T) {
+	t.Run("String", func(t *testing.T) {
+		var circuit echalotte.Circuit
+		circuit = []peer.ID{peer.ID("1"), peer.ID("2"), peer.ID("3")}
+		// Note: note 1 -> 2 -> 3 because we prettify (b58).
+		assert.Equal(t, "r -> s -> t", circuit.String())
+	})
+}
+
 func TestCircuitBuilder(t *testing.T) {
 	t.Run("New()", func(t *testing.T) {
 		t.Run("wraps advertiser error", func(t *testing.T) {

@@ -5,6 +5,7 @@ import (
 	crand "crypto/rand"
 	"math/big"
 	"math/rand"
+	"strings"
 	"sync"
 	"time"
 
@@ -76,6 +77,16 @@ func CircuitTimeout(timeout time.Duration) CircuitOption {
 
 // Circuit can be used to create an onion-routed message.
 type Circuit []peer.ID
+
+// String representation of the circuit.
+func (c Circuit) String() string {
+	var relays []string
+	for _, relay := range c {
+		relays = append(relays, relay.Pretty())
+	}
+
+	return strings.Join(relays, " -> ")
+}
 
 // CircuitBuilder lets you build random circuits for onion routing.
 type CircuitBuilder struct {

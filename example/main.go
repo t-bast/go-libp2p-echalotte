@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	"time"
+
+	"github.com/t-bast/go-libp2p-echalotte"
 
 	"gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
 	"gx/ipfs/QmPiemjiKBC9VA7vZF82m4x1oygtg2c2YVqag8PX7dN1BD/go-libp2p-peerstore"
@@ -10,6 +13,7 @@ import (
 	"gx/ipfs/QmaoXrM4Z41PD48JY36YqQGKQpLGjyLA2cKcLsES7YddAq/go-libp2p-host"
 	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 	"gx/ipfs/QmdJdFQc5U3RAKgJQGmWR7SSM7TLuER5FWz5Wq6Tzs2CnS/go-libp2p"
+	"gx/ipfs/QmemYsfqwAbyvqwFiApk1GfLKhDkMm8ZQK6fCvzDbaRNyX/go-libp2p-discovery"
 )
 
 var log = logging.Logger("echalotte")
@@ -40,17 +44,37 @@ func main() {
 
 	log.Infof("Host created. We are: %s", host.ID().Pretty())
 
-	_, err = startDHT(ctx, host)
-	if err != nil {
-		log.Error(err)
-		return
-	}
-
 	err = bootstrapConnections(ctx, host, config.BootstrapPeers)
 	if err != nil {
 		log.Error(err)
 		return
 	}
+
+	kadDHT, err := startDHT(ctx, host)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
+	log.Info("Initializing circuit builder...")
+	circuitBuilder, err := echalotte.NewCircuitBuilder(
+		ctx,
+		discovery.NewRoutingDiscovery(kadDHT),
+	)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	log.Info("Circuit builder ready.")
+
+	log.Info("Generating circuit...")
+	circuit, err := circuitBuilder.Build(ctx, echalotte.CircuitSize(3))
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
+	log.Infof("Circuit generated: %s", circuit)
 
 	select {}
 }
@@ -84,23 +108,35 @@ func bootstrapConnections(ctx context.Context, host host.Host, bootstrapPeers []
 		for _, addr := range host.Addrs() {
 			log.Info(addr.String())
 		}
+	} else {
+		for _, peerAddr := range bootstrapPeers {
+			peerInfo, err := peerstore.InfoFromP2pAddr(peerAddr)
+			if err != nil {
+				return err
+			}
 
-		return nil
+			err = host.Connect(ctx, *peerInfo)
+			if err != nil {
+				return err
+			}
+
+			log.Infof("Connection established with bootstrap node: %s", peerInfo.ID.Pretty())
+		}
 	}
 
-	for _, peerAddr := range bootstrapPeers {
-		peerInfo, err := peerstore.InfoFromP2pAddr(peerAddr)
-		if err != nil {
-			return err
+	log.Info("Waiting for enough connected peers...")
+	for {
+		log.Infof("%d peer(s) connected...", len(host.Network().Conns()))
+
+		if len(host.Network().Conns()) >= 20 {
+			log.Info("Network bootstrapped.")
+			return nil
 		}
 
-		err = host.Connect(ctx, *peerInfo)
-		if err != nil {
-			return err
-		}
+		// TODO: bootstrap node should provide addresses of known peers
+		// to increase connectedness. Every node should be connected to every
+		// other node to make sure the DHT has entries.
 
-		log.Infof("Connection established with bootstrap node: %s", peerInfo.ID.Pretty())
+		<-time.After(5 * time.Second)
 	}
-
-	return nil
 }
