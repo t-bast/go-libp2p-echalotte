@@ -28,14 +28,14 @@ adding the node's peer ID.
 You can now start many other nodes using the first one to bootstrap:
 
 ```bash
-./echalotte-node -peer /ip4/127.0.0.1/tcp/4001/ipfs/QmQqd1ydWGBbwLhrR2Kjmvx46qLf3GPrjmj55EW6N5CpNU -listen /ip4/0.0.0.0/tcp/4002
-./echalotte-node -peer /ip4/127.0.0.1/tcp/4001/ipfs/QmQqd1ydWGBbwLhrR2Kjmvx46qLf3GPrjmj55EW6N5CpNU -listen /ip4/0.0.0.0/tcp/4003
-./echalotte-node -peer /ip4/127.0.0.1/tcp/4001/ipfs/QmQqd1ydWGBbwLhrR2Kjmvx46qLf3GPrjmj55EW6N5CpNU -listen /ip4/0.0.0.0/tcp/4004
-./echalotte-node -peer /ip4/127.0.0.1/tcp/4001/ipfs/QmQqd1ydWGBbwLhrR2Kjmvx46qLf3GPrjmj55EW6N5CpNU -listen /ip4/0.0.0.0/tcp/4005
+./echalotte-node -peer /ip4/127.0.0.1/tcp/4001/ipfs/QmdJQmo3gYqTXbGL3R1j8Zgw4svP6zLkkFqP6fBXR9Gnt1 -listen /ip4/0.0.0.0/tcp/4002
+./echalotte-node -peer /ip4/127.0.0.1/tcp/4001/ipfs/QmdJQmo3gYqTXbGL3R1j8Zgw4svP6zLkkFqP6fBXR9Gnt1 -listen /ip4/0.0.0.0/tcp/4003
+./echalotte-node -peer /ip4/127.0.0.1/tcp/4001/ipfs/QmdJQmo3gYqTXbGL3R1j8Zgw4svP6zLkkFqP6fBXR9Gnt1 -listen /ip4/0.0.0.0/tcp/4004
+./echalotte-node -peer /ip4/127.0.0.1/tcp/4001/ipfs/QmdJQmo3gYqTXbGL3R1j8Zgw4svP6zLkkFqP6fBXR9Gnt1 -listen /ip4/0.0.0.0/tcp/4005
 ```
 
 Once enough nodes have been added and are connected to each other, the onion
-routing layer will initialize and generate a sample circuit that will be 
+routing layer will initialize and generate a sample circuit that will be
 printed to the console.
 
 ## Tips

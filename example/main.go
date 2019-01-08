@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
+	crand "crypto/rand"
 	"time"
 
 	"github.com/t-bast/go-libp2p-echalotte"
 
 	"gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
+	"gx/ipfs/QmNiJiXwWE3kRhZrC5ej3kSjWHm337pYfhjLGSCDNKJP2s/go-libp2p-crypto"
 	"gx/ipfs/QmPiemjiKBC9VA7vZF82m4x1oygtg2c2YVqag8PX7dN1BD/go-libp2p-peerstore"
 	"gx/ipfs/QmSQE3LqUVq8YvnmCCZHwkSDrcyQecfEWTjcpsUzH8iHtW/go-libp2p-kad-dht"
 	"gx/ipfs/QmTiRqrF5zkdZyrdsL5qndG1UbeWi8k8N2pYxCtXWrahR2/go-libp2p-routing"
@@ -33,8 +35,15 @@ func main() {
 		return
 	}
 
+	peerKey, _, err := crypto.GenerateEd25519Key(crand.Reader)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
 	options := []libp2p.Option{
 		libp2p.ListenAddrs(config.ListenAddresses...),
+		libp2p.Identity(peerKey),
 	}
 
 	host, err := libp2p.New(ctx, options...)
