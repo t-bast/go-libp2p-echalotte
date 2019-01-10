@@ -25,18 +25,24 @@ You should see in the logs all the addresses the bootstrap node listens on.
 You can now choose one of these addresses and wrap it inside an ipfs one by
 adding the node's peer ID.
 
-You can now start many other nodes using the first one to bootstrap:
+You can now start many other nodes using the first one to bootstrap (for the
+demo to work you should initialize at least 7 nodes):
 
 ```bash
-./echalotte-node -peer /ip4/127.0.0.1/tcp/4001/ipfs/QmdJQmo3gYqTXbGL3R1j8Zgw4svP6zLkkFqP6fBXR9Gnt1 -listen /ip4/0.0.0.0/tcp/4002
-./echalotte-node -peer /ip4/127.0.0.1/tcp/4001/ipfs/QmdJQmo3gYqTXbGL3R1j8Zgw4svP6zLkkFqP6fBXR9Gnt1 -listen /ip4/0.0.0.0/tcp/4003
-./echalotte-node -peer /ip4/127.0.0.1/tcp/4001/ipfs/QmdJQmo3gYqTXbGL3R1j8Zgw4svP6zLkkFqP6fBXR9Gnt1 -listen /ip4/0.0.0.0/tcp/4004
-./echalotte-node -peer /ip4/127.0.0.1/tcp/4001/ipfs/QmdJQmo3gYqTXbGL3R1j8Zgw4svP6zLkkFqP6fBXR9Gnt1 -listen /ip4/0.0.0.0/tcp/4005
+./echalotte-node -peer /ip4/127.0.0.1/tcp/4001/ipfs/QmW5fMEsusmL8H598reQgSCPmvv4UZ1Q5JeVArVvXSBqUh -listen /ip4/0.0.0.0/tcp/4002
+./echalotte-node -peer /ip4/127.0.0.1/tcp/4001/ipfs/QmW5fMEsusmL8H598reQgSCPmvv4UZ1Q5JeVArVvXSBqUh -listen /ip4/0.0.0.0/tcp/4003
+./echalotte-node -peer /ip4/127.0.0.1/tcp/4001/ipfs/QmW5fMEsusmL8H598reQgSCPmvv4UZ1Q5JeVArVvXSBqUh -listen /ip4/0.0.0.0/tcp/4004
+./echalotte-node -peer /ip4/127.0.0.1/tcp/4001/ipfs/QmW5fMEsusmL8H598reQgSCPmvv4UZ1Q5JeVArVvXSBqUh -listen /ip4/0.0.0.0/tcp/4005
+./echalotte-node -peer /ip4/127.0.0.1/tcp/4001/ipfs/QmW5fMEsusmL8H598reQgSCPmvv4UZ1Q5JeVArVvXSBqUh -listen /ip4/0.0.0.0/tcp/4006
+./echalotte-node -peer /ip4/127.0.0.1/tcp/4001/ipfs/QmW5fMEsusmL8H598reQgSCPmvv4UZ1Q5JeVArVvXSBqUh -listen /ip4/0.0.0.0/tcp/4007
 ```
 
 Once enough nodes have been added and are connected to each other, the onion
 routing layer will initialize and generate a sample circuit that will be
 printed to the console.
+
+The bootstrapping process can take a few minutes (to setup enough nodes in the
+network and bootstrap the DHT content), so be patient!
 
 ## Tips
 

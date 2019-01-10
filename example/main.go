@@ -41,9 +41,35 @@ func main() {
 		return
 	}
 
+	// The DHT will initialize when we bootstrap the host.
+	// It is used for peer discovery internally by our host.
+	var kadDHT *dht.IpfsDHT
+
 	options := []libp2p.Option{
 		libp2p.ListenAddrs(config.ListenAddresses...),
 		libp2p.Identity(peerKey),
+		libp2p.Routing(func(h host.Host) (routing.PeerRouting, error) {
+			var err error
+
+			// Start a DHT, for use in peer discovery.
+			// We can't just make a new DHT client because we want each peer to
+			// maintain its own local copy of the DHT, so that the bootstrapping node
+			// of the DHT can go down without inhibitting future peer discovery.
+			kadDHT, err = dht.New(ctx, h)
+			if err != nil {
+				return nil, err
+			}
+
+			// Bootstrap the DHT.
+			// In the default configuration, this spawns a background thread that will
+			// refresh the peer table every five minutes.
+			log.Info("Bootstrapping the DHT...")
+			if err = kadDHT.Bootstrap(ctx); err != nil {
+				return nil, err
+			}
+
+			return kadDHT, nil
+		}),
 	}
 
 	host, err := libp2p.New(ctx, options...)
@@ -54,12 +80,6 @@ func main() {
 	log.Infof("Host created. We are: %s", host.ID().Pretty())
 
 	err = bootstrapConnections(ctx, host, config.BootstrapPeers)
-	if err != nil {
-		log.Error(err)
-		return
-	}
-
-	kadDHT, err := startDHT(ctx, host)
 	if err != nil {
 		log.Error(err)
 		return
@@ -77,37 +97,22 @@ func main() {
 	log.Info("Circuit builder ready.")
 
 	log.Info("Generating circuit...")
-	circuit, err := circuitBuilder.Build(ctx, echalotte.CircuitSize(3))
-	if err != nil {
-		log.Error(err)
-		return
+	for {
+		circuit, err := circuitBuilder.Build(ctx, echalotte.CircuitSize(2))
+		if err != nil {
+			log.Warningf("Could not generate circuit: %s", err.Error())
+			log.Info("Waiting before retrying (peers are likely not ready)...")
+			<-time.After(1 * time.Minute)
+			log.Info("Retrying...")
+			continue
+		}
+
+		log.Infof("Circuit generated: %s", circuit)
+		break
 	}
 
-	log.Infof("Circuit generated: %s", circuit)
-
+	log.Info("Press Ctrl+C to stop the node.")
 	select {}
-}
-
-func startDHT(ctx context.Context, host host.Host) (routing.ContentRouting, error) {
-	// Start a DHT, for use in peer discovery.
-	// We can't just make a new DHT client because we want each peer to
-	// maintain its own local copy of the DHT, so that the bootstrapping node
-	// of the DHT can go down without inhibitting future peer discovery.
-	kademliaDHT, err := dht.New(ctx, host)
-	if err != nil {
-		return nil, err
-	}
-
-	// Bootstrap the DHT.
-	// In the default configuration, this spawns a background thread that will
-	// refresh the peer table every five minutes.
-	log.Info("Bootstrapping the DHT...")
-	if err = kademliaDHT.Bootstrap(ctx); err != nil {
-		return nil, err
-	}
-
-	log.Info("DHT bootstrap complete.")
-	return kademliaDHT, nil
 }
 
 func bootstrapConnections(ctx context.Context, host host.Host, bootstrapPeers []multiaddr.Multiaddr) error {
@@ -137,14 +142,10 @@ func bootstrapConnections(ctx context.Context, host host.Host, bootstrapPeers []
 	for {
 		log.Infof("%d peer(s) connected...", len(host.Network().Conns()))
 
-		if len(host.Network().Conns()) >= 20 {
+		if len(host.Network().Conns()) >= 6 {
 			log.Info("Network bootstrapped.")
 			return nil
 		}
-
-		// TODO: bootstrap node should provide addresses of known peers
-		// to increase connectedness. Every node should be connected to every
-		// other node to make sure the DHT has entries.
 
 		<-time.After(5 * time.Second)
 	}
