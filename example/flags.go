@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 
-	"github.com/pkg/errors"
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 )
 
 // Config built from command-line flags.

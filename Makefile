@@ -22,10 +22,18 @@ mockgen: mockdeps
 	go generate
 
 # Build protobuf definitions.
-protobuf: $(PROTO_GO_FILES)
+protobuf: protodeps $(PROTO_GO_FILES)
+
+protodeps:
+	go get -u github.com/gogo/protobuf/protoc-gen-gogofaster
 
 %.pb.go: %.proto
-	protoc --proto_path=$(GOPATH)/src:. --go_out=. $<
+	protoc -I=$(GOPATH)/src --proto_path=$(GOPATH)/src:. --gogofaster_out=\
+Mgoogle/protobuf/any.proto=github.com/gogo/protobuf/types,\
+Mgoogle/protobuf/duration.proto=github.com/gogo/protobuf/types,\
+Mgoogle/protobuf/struct.proto=github.com/gogo/protobuf/types,\
+Mgoogle/protobuf/timestamp.proto=github.com/gogo/protobuf/types,\
+Mgoogle/protobuf/wrappers.proto=github.com/gogo/protobuf/types:. $<
 
 # Publish the package.
 publish:
