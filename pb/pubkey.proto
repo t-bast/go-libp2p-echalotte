@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package echalotte.pb;
+
+import "google/protobuf/timestamp.proto";
+
+// The type of encryption key.
+enum KeyType {
+    Curve25519 = 0;
+}
+
+// An encryption public key.
+message PublicKey {
+    KeyType type = 1;
+    google.protobuf.Timestamp created_at = 2;
+    bytes data = 3;
+
+    bytes signature_key = 10;
+    bytes signature = 11;
+}

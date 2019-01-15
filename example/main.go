@@ -7,10 +7,13 @@ import (
 
 	"github.com/t-bast/go-libp2p-echalotte"
 
+	"golang.org/x/crypto/nacl/box"
+
 	"gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
 	"gx/ipfs/QmNiJiXwWE3kRhZrC5ej3kSjWHm337pYfhjLGSCDNKJP2s/go-libp2p-crypto"
 	"gx/ipfs/QmPiemjiKBC9VA7vZF82m4x1oygtg2c2YVqag8PX7dN1BD/go-libp2p-peerstore"
 	"gx/ipfs/QmSQE3LqUVq8YvnmCCZHwkSDrcyQecfEWTjcpsUzH8iHtW/go-libp2p-kad-dht"
+	"gx/ipfs/QmSQE3LqUVq8YvnmCCZHwkSDrcyQecfEWTjcpsUzH8iHtW/go-libp2p-kad-dht/opts"
 	"gx/ipfs/QmTiRqrF5zkdZyrdsL5qndG1UbeWi8k8N2pYxCtXWrahR2/go-libp2p-routing"
 	"gx/ipfs/QmaoXrM4Z41PD48JY36YqQGKQpLGjyLA2cKcLsES7YddAq/go-libp2p-host"
 	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
@@ -43,6 +46,7 @@ func main() {
 
 	// The DHT will initialize when we bootstrap the host.
 	// It is used for peer discovery internally by our host.
+	dhtValidator := &echalotte.PublicKeyValidator{}
 	var kadDHT *dht.IpfsDHT
 
 	options := []libp2p.Option{
@@ -55,7 +59,7 @@ func main() {
 			// We can't just make a new DHT client because we want each peer to
 			// maintain its own local copy of the DHT, so that the bootstrapping node
 			// of the DHT can go down without inhibitting future peer discovery.
-			kadDHT, err = dht.New(ctx, h)
+			kadDHT, err = dht.New(ctx, h, dhtopts.Validator(dhtValidator))
 			if err != nil {
 				return nil, err
 			}
@@ -74,12 +78,30 @@ func main() {
 
 	host, err := libp2p.New(ctx, options...)
 	if err != nil {
-		panic(err)
+		log.Error(err)
+		return
 	}
 
 	log.Infof("Host created. We are: %s", host.ID().Pretty())
 
 	err = bootstrapConnections(ctx, host, config.BootstrapPeers)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
+	// TODO: move that to a node init/warmup method in echalotte.
+	// The encryption private key needs to be stored permanently (PeerStore?).
+	// Most of this file's logic should be handled by a function exported by
+	// the echalotte package.
+	encryptionPublicKey, _, _ := box.GenerateKey(crand.Reader)
+	dhtRecord, err := dhtValidator.CreateRecord(peerKey, encryptionPublicKey)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
+	err = kadDHT.PutValue(ctx, dhtValidator.CreateKey(host.ID()), dhtRecord)
 	if err != nil {
 		log.Error(err)
 		return
@@ -147,6 +169,6 @@ func bootstrapConnections(ctx context.Context, host host.Host, bootstrapPeers []
 			return nil
 		}
 
-		<-time.After(5 * time.Second)
+		<-time.After(30 * time.Second)
 	}
 }

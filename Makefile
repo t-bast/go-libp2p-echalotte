@@ -1,3 +1,7 @@
+# Protobuf files.
+PROTO_FILES=$(shell find pb -name '*.proto')
+PROTO_GO_FILES=$(PROTO_FILES:.proto=.pb.go)
+
 # Install the gx package manager.
 gx:
 	go get -u github.com/whyrusleeping/gx
@@ -16,6 +20,12 @@ mockdeps:
 # Generate mocks.
 mockgen: mockdeps
 	go generate
+
+# Build protobuf definitions.
+protobuf: $(PROTO_GO_FILES)
+
+%.pb.go: %.proto
+	protoc --proto_path=$(GOPATH)/src:. --go_out=. $<
 
 # Publish the package.
 publish:
