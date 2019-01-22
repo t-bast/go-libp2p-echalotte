@@ -5,12 +5,16 @@ import (
 	crand "crypto/rand"
 	"time"
 
+	pb "github.com/t-bast/go-libp2p-echalotte/pb"
+
 	inet "gx/ipfs/QmNgLg1NTw37iWbYPKcyK85YJ9Whs1MkPtJwhfqbNYAyKg/go-libp2p-net"
 	ropts "gx/ipfs/QmTiRqrF5zkdZyrdsL5qndG1UbeWi8k8N2pYxCtXWrahR2/go-libp2p-routing/options"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmW7VUmSvhvSGbYbdsh7uRjhGmsYkc9fL8aJ5CorxxrU5N/go-crypto/nacl/box"
+	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
 	"gx/ipfs/QmZNkThpqfVXs9GNbexPrfBbXSLNYeKrE7jwFM2oqHbyqN/go-libp2p-protocol"
 	"gx/ipfs/QmaoXrM4Z41PD48JY36YqQGKQpLGjyLA2cKcLsES7YddAq/go-libp2p-host"
+	"gx/ipfs/QmdxUuburamoF6zF9qjeQC4WYcWGbWuRmdLacMEsW8ioD8/gogo-protobuf/proto"
 )
 
 const (
@@ -29,6 +33,7 @@ const (
 // DHT interface needed to advertise encryption keys in the network.
 type DHT interface {
 	PutValue(context.Context, string, []byte, ...ropts.Option) error
+	GetValue(context.Context, string, ...ropts.Option) ([]byte, error)
 }
 
 // Host wraps a standard host with onion routing capabilities.
@@ -139,6 +144,55 @@ func (h *Host) registerEncryptionKey(ctx context.Context) error {
 	log.Info("Encryption key registered")
 
 	return nil
+}
+
+// SendMessage sends a private message to the given peer.
+// It leverages onion routing through the echalotte network.
+func (h *Host) SendMessage(ctx context.Context, to peer.ID, message []byte) error {
+	circuit, err := h.circuitBuilder.Build(ctx)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	m, err := NewMessage(h.ID(), h.Peerstore().PrivKey(h.ID()), message)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	for _, relay := range circuit {
+		key, err := h.peerEncryptionKey(ctx, relay)
+		if err != nil {
+			return errors.Wrapf(err, "could not get encryption key for %s", relay.Pretty())
+		}
+
+		m, err = m.Encapsulate(relay, key)
+		if err != nil {
+			return errors.Wrapf(err, "could not encapsulate to peer %s", relay.Pretty())
+		}
+	}
+
+	// TODO: open stream to circuit relay.
+	// Send it the encrypted message.
+
+	return nil
+}
+
+func (h *Host) peerEncryptionKey(ctx context.Context, peerID peer.ID) (*[32]byte, error) {
+	record, err := h.dht.GetValue(ctx, h.validator.CreateKey(peerID))
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	var peerKey pb.PublicKey
+	err = proto.Unmarshal(record, &peerKey)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	var pubKey [32]byte
+	copy(pubKey[:], peerKey.Data)
+
+	return &pubKey, nil
 }
 
 func (h *Host) handleStream(stream inet.Stream) {

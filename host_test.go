@@ -3,6 +3,7 @@ package echalotte_test
 import (
 	"context"
 	crand "crypto/rand"
+	"strings"
 	"testing"
 	"time"
 
@@ -12,11 +13,19 @@ import (
 	"github.com/t-bast/go-libp2p-echalotte/echalottetesting"
 	pb "github.com/t-bast/go-libp2p-echalotte/pb"
 
+	"gx/ipfs/QmNiJiXwWE3kRhZrC5ej3kSjWHm337pYfhjLGSCDNKJP2s/go-libp2p-crypto"
 	"gx/ipfs/QmW7VUmSvhvSGbYbdsh7uRjhGmsYkc9fL8aJ5CorxxrU5N/go-crypto/nacl/box"
+	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
 	"gx/ipfs/QmdxUuburamoF6zF9qjeQC4WYcWGbWuRmdLacMEsW8ioD8/gogo-protobuf/proto"
 )
 
 func TestHost(t *testing.T) {
+	alicePrivateKey, _, err := crypto.GenerateEd25519Key(crand.Reader)
+	require.NoError(t, err)
+
+	alice, err := peer.IDFromPrivateKey(alicePrivateKey)
+	require.NoError(t, err)
+
 	t.Run("Encryption keys", func(t *testing.T) {
 		circuitBuilder := echalottetesting.NewDummyCircuitBuilder(t, echalotte.CircuitSize(3))
 
@@ -116,11 +125,15 @@ func TestHost(t *testing.T) {
 			defer cancel()
 
 			h := echalottetesting.RandomHost(ctx, t)
-			dht := echalottetesting.NewInMemoryDHT()
 
 			connectChan := make(chan struct{})
 			go func() {
-				echalotte.Connect(ctx, h, dht, echalottetesting.NewFailingCircuitBuilder())
+				echalotte.Connect(
+					ctx,
+					h,
+					echalottetesting.NewInMemoryDHT(),
+					echalottetesting.NewDummyCircuitBuilder(t).StartFailing(),
+				)
 				connectChan <- struct{}{}
 			}()
 
@@ -130,6 +143,76 @@ func TestHost(t *testing.T) {
 			case <-time.After(200 * time.Millisecond):
 				return
 			}
+		})
+	})
+
+	t.Run("SendMessage()", func(t *testing.T) {
+		t.Run("circuit error", func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			cb := echalottetesting.NewDummyCircuitBuilder(t)
+			h, err := echalotte.Connect(
+				ctx,
+				echalottetesting.RandomHost(ctx, t),
+				echalottetesting.NewInMemoryDHT(),
+				cb,
+			)
+			require.NoError(t, err)
+
+			cb.StartFailing()
+
+			err = h.SendMessage(ctx, alice, []byte("Rappelez-vous l'objet que nous vîmes, mon âme,"))
+			assert.EqualError(t, err, echalottetesting.ErrBuildCircuit)
+		})
+
+		t.Run("encryption key not found", func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			h, err := echalotte.Connect(
+				ctx,
+				echalottetesting.RandomHost(ctx, t),
+				echalottetesting.NewInMemoryDHT(),
+				echalottetesting.NewDummyCircuitBuilder(t),
+			)
+			require.NoError(t, err)
+
+			err = h.SendMessage(ctx, alice, []byte("Ce beau matin d'été si doux :"))
+			assert.Error(t, err)
+			assert.True(t, strings.HasPrefix(err.Error(), "could not get encryption key"))
+		})
+
+		t.Run("success", func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			dht := echalottetesting.NewInMemoryDHT()
+
+			var relays []peer.ID
+			for i := 0; i < 10; i++ {
+				sk, _, _ := crypto.GenerateEd25519Key(crand.Reader)
+				pk, _, _ := box.GenerateKey(crand.Reader)
+				relayID, _ := peer.IDFromPrivateKey(sk)
+				relays = append(relays, relayID)
+
+				v := &echalotte.PublicKeyValidator{}
+				record, _ := v.CreateRecord(sk, pk)
+				dht.PutValue(ctx, v.CreateKey(relayID), record)
+			}
+
+			cb := echalottetesting.NewDummyCircuitBuilderFromNetwork(t, relays)
+
+			h, err := echalotte.Connect(
+				ctx,
+				echalottetesting.RandomHost(ctx, t),
+				dht,
+				cb,
+			)
+			require.NoError(t, err)
+
+			err = h.SendMessage(ctx, alice, []byte("Au détour d'un sentier une charogne infâme"))
+			assert.NoError(t, err)
 		})
 	})
 }
