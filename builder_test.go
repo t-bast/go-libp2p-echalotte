@@ -18,7 +18,7 @@ import (
 )
 
 // Create a test circuit builder using the given discovery mock.
-func newTestCircuitBuilder(t *testing.T, discover *mocks.MockDiscovery) *echalotte.CircuitBuilder {
+func newTestCircuitBuilder(t *testing.T, discover *mocks.MockDiscovery) echalotte.CircuitBuilder {
 	discover.EXPECT().Advertise(gomock.Any(), echalotte.OnionRelay)
 
 	cb, err := echalotte.NewCircuitBuilder(context.Background(), discover)

@@ -74,32 +74,51 @@ func CircuitTimeout(timeout time.Duration) CircuitOption {
 }
 
 // CircuitBuilder lets you build random circuits for onion routing.
-type CircuitBuilder struct {
+type CircuitBuilder interface {
+	Build(context.Context, ...CircuitOption) (Circuit, error)
+}
+
+// DiscoveryCircuitBuilder lets you build random circuits for onion routing
+// based on a discovery.Discoverer.
+type DiscoveryCircuitBuilder struct {
 	discover discovery.Discoverer
+	options  CircuitOptions
 }
 
 // NewCircuitBuilder creates a new circuit builder that leverages the given
 // discovery component to find other peers that provide onion relays.
-func NewCircuitBuilder(ctx context.Context, discover discovery.Discovery) (*CircuitBuilder, error) {
+func NewCircuitBuilder(ctx context.Context, discover discovery.Discovery, opts ...CircuitOption) (CircuitBuilder, error) {
+	options := &CircuitOptions{
+		Size:    DefaultCircuitSize,
+		Timeout: DefaultCircuitTimeout,
+	}
+	err := options.Apply(opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Info("Advertising onion relay...")
+
 	// TODO: set appropriate TTL option and auto-refresh in go routine.
 	// This will prevent peers that aren't responsive from being chosen in an
 	// onion circuit.
 	// Test how it behaves in a real network.
-	_, err := discover.Advertise(ctx, OnionRelay)
+	_, err = discover.Advertise(ctx, OnionRelay)
 	if err != nil {
 		return nil, errors.Wrap(err, ErrAdvertise)
 	}
 
-	return &CircuitBuilder{
+	return &DiscoveryCircuitBuilder{
 		discover: discover,
+		options:  *options,
 	}, nil
 }
 
 // Build a random circuit between network relay peers.
-func (cb *CircuitBuilder) Build(ctx context.Context, opts ...CircuitOption) (Circuit, error) {
+func (cb *DiscoveryCircuitBuilder) Build(ctx context.Context, opts ...CircuitOption) (Circuit, error) {
 	options := &CircuitOptions{
-		Size:    DefaultCircuitSize,
-		Timeout: DefaultCircuitTimeout,
+		Size:    cb.options.Size,
+		Timeout: cb.options.Timeout,
 	}
 	err := options.Apply(opts...)
 	if err != nil {
@@ -111,7 +130,6 @@ func (cb *CircuitBuilder) Build(ctx context.Context, opts ...CircuitOption) (Cir
 	rlimit, _ := crand.Int(crand.Reader, big.NewInt(int64(2*options.Size)))
 	limit := 4*options.Size + int(rlimit.Int64())
 
-	// TODO: test how this behaves in a real network with an underlying kademlia DHT.
 	peerChan, err := cb.discover.FindPeers(ctx, OnionRelay, discovery.Limit(limit))
 	if err != nil {
 		return nil, errors.Wrap(err, ErrFindRelays)
@@ -126,6 +144,8 @@ func (cb *CircuitBuilder) Build(ctx context.Context, opts ...CircuitOption) (Cir
 		return nil, err
 	}
 
+	log.Debugf("Collected %d relay nodes for circuit of size %d", len(relays), options.Size)
+
 	circuitRelays := cb.selectRelays(relays, options.Size)
 	return circuitRelays, nil
 }
@@ -133,7 +153,7 @@ func (cb *CircuitBuilder) Build(ctx context.Context, opts ...CircuitOption) (Cir
 // findRelays synchronously finds the request number of relay peers.
 // If it can't find enough peers before the timeout expires, it will return an
 // error.
-func (cb *CircuitBuilder) findRelays(
+func (cb *DiscoveryCircuitBuilder) findRelays(
 	peerChan <-chan peerstore.PeerInfo,
 	count int,
 	timeout time.Duration,
@@ -176,7 +196,7 @@ func (cb *CircuitBuilder) findRelays(
 }
 
 // selectRelays randomly selects a subset of the available relays.
-func (cb *CircuitBuilder) selectRelays(relays []peerstore.PeerInfo, count int) Circuit {
+func (cb *DiscoveryCircuitBuilder) selectRelays(relays []peerstore.PeerInfo, count int) Circuit {
 	seed, _ := crand.Int(crand.Reader, big.NewInt(1<<62))
 	rand.Seed(seed.Int64())
 	rand.Shuffle(len(relays), func(i, j int) { relays[i], relays[j] = relays[j], relays[i] })

@@ -13,7 +13,7 @@ go build -o echalotte-node
 ### Create your own network
 
 To create your own network that supports onion routing, you'll need to start
-many nodes (at least 20 for this example).
+many nodes (at least 7 for this example).
 
 Start a first bootstrap node:
 

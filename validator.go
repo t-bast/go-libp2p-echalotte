@@ -68,7 +68,15 @@ func (pkv PublicKeyValidator) CreateRecord(signingKey crypto.PrivKey, encryption
 }
 
 // Validate the node-to-node encryption record.
-func (pkv PublicKeyValidator) Validate(key string, value []byte) error {
+func (pkv PublicKeyValidator) Validate(key string, value []byte) (err error) {
+	defer func() {
+		if err != nil {
+			log.Errorf("DHT: Received invalid value for key %s: %s", key, err.Error())
+		} else {
+			log.Infof("DHT: Received valid value for key %s", key)
+		}
+	}()
+
 	peerID, err := pkv.getPeerID(key)
 	if err != nil {
 		return err

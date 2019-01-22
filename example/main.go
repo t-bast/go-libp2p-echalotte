@@ -13,14 +13,13 @@ import (
 	"gx/ipfs/QmSQE3LqUVq8YvnmCCZHwkSDrcyQecfEWTjcpsUzH8iHtW/go-libp2p-kad-dht"
 	"gx/ipfs/QmSQE3LqUVq8YvnmCCZHwkSDrcyQecfEWTjcpsUzH8iHtW/go-libp2p-kad-dht/opts"
 	"gx/ipfs/QmTiRqrF5zkdZyrdsL5qndG1UbeWi8k8N2pYxCtXWrahR2/go-libp2p-routing"
-	"gx/ipfs/QmW7VUmSvhvSGbYbdsh7uRjhGmsYkc9fL8aJ5CorxxrU5N/go-crypto/nacl/box"
 	"gx/ipfs/QmaoXrM4Z41PD48JY36YqQGKQpLGjyLA2cKcLsES7YddAq/go-libp2p-host"
 	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 	"gx/ipfs/QmdJdFQc5U3RAKgJQGmWR7SSM7TLuER5FWz5Wq6Tzs2CnS/go-libp2p"
 	"gx/ipfs/QmemYsfqwAbyvqwFiApk1GfLKhDkMm8ZQK6fCvzDbaRNyX/go-libp2p-discovery"
 )
 
-var log = logging.Logger("echalotte")
+var log = logging.Logger("echalotte/host")
 
 func main() {
 	// The context governs the lifetime of the libp2p node.
@@ -89,27 +88,11 @@ func main() {
 		return
 	}
 
-	// TODO: move that to a node init/warmup method in echalotte.
-	// The encryption private key needs to be stored permanently (PeerStore?).
-	// Most of this file's logic should be handled by a function exported by
-	// the echalotte package.
-	encryptionPublicKey, _, _ := box.GenerateKey(crand.Reader)
-	dhtRecord, err := dhtValidator.CreateRecord(peerKey, encryptionPublicKey)
-	if err != nil {
-		log.Error(err)
-		return
-	}
-
-	err = kadDHT.PutValue(ctx, dhtValidator.CreateKey(host.ID()), dhtRecord)
-	if err != nil {
-		log.Error(err)
-		return
-	}
-
 	log.Info("Initializing circuit builder...")
 	circuitBuilder, err := echalotte.NewCircuitBuilder(
 		ctx,
 		discovery.NewRoutingDiscovery(kadDHT),
+		echalotte.CircuitSize(2),
 	)
 	if err != nil {
 		log.Error(err)
@@ -117,9 +100,16 @@ func main() {
 	}
 	log.Info("Circuit builder ready.")
 
+	log.Info("Connecting to echalotte network...")
+	_, err = echalotte.Connect(ctx, host, kadDHT, circuitBuilder)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
 	log.Info("Generating circuit...")
 	for {
-		circuit, err := circuitBuilder.Build(ctx, echalotte.CircuitSize(2))
+		circuit, err := circuitBuilder.Build(ctx)
 		if err != nil {
 			log.Warningf("Could not generate circuit: %s", err.Error())
 			log.Info("Waiting before retrying (peers are likely not ready)...")
