@@ -44,6 +44,9 @@ printed to the console.
 The bootstrapping process can take a few minutes (to setup enough nodes in the
 network and bootstrap the DHT content), so be patient!
 
+Once the bootstrapping process completes, you will get a prompt that lets you
+send messages between nodes.
+
 ## Tips
 
 You can change the logging level from 4 (INFO) to 5 (DEBUG) if you want to see

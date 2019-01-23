@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	crand "crypto/rand"
+	"os"
 	"time"
 
 	"github.com/t-bast/go-libp2p-echalotte"
@@ -13,13 +15,14 @@ import (
 	"gx/ipfs/QmSQE3LqUVq8YvnmCCZHwkSDrcyQecfEWTjcpsUzH8iHtW/go-libp2p-kad-dht"
 	"gx/ipfs/QmSQE3LqUVq8YvnmCCZHwkSDrcyQecfEWTjcpsUzH8iHtW/go-libp2p-kad-dht/opts"
 	"gx/ipfs/QmTiRqrF5zkdZyrdsL5qndG1UbeWi8k8N2pYxCtXWrahR2/go-libp2p-routing"
+	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
 	"gx/ipfs/QmaoXrM4Z41PD48JY36YqQGKQpLGjyLA2cKcLsES7YddAq/go-libp2p-host"
 	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 	"gx/ipfs/QmdJdFQc5U3RAKgJQGmWR7SSM7TLuER5FWz5Wq6Tzs2CnS/go-libp2p"
 	"gx/ipfs/QmemYsfqwAbyvqwFiApk1GfLKhDkMm8ZQK6fCvzDbaRNyX/go-libp2p-discovery"
 )
 
-var log = logging.Logger("echalotte/host")
+var log = logging.Logger("echalottehost")
 
 func main() {
 	// The context governs the lifetime of the libp2p node.
@@ -101,29 +104,34 @@ func main() {
 	log.Info("Circuit builder ready.")
 
 	log.Info("Connecting to echalotte network...")
-	_, err = echalotte.Connect(ctx, host, kadDHT, circuitBuilder)
+	eh, err := echalotte.Connect(ctx, host, kadDHT, circuitBuilder)
 	if err != nil {
 		log.Error(err)
 		return
 	}
 
-	log.Info("Generating circuit...")
+	log.Info("Connected to echalotte network!")
+
+	reader := bufio.NewReader(os.Stdin)
 	for {
-		circuit, err := circuitBuilder.Build(ctx)
+		log.Info("Enter a message to send:")
+		message, _ := reader.ReadString('\n')
+
+		log.Info("Enter the ID of the recipient:")
+		peerIDStr, _ := reader.ReadString('\n')
+		peerID, err := peer.IDB58Decode(peerIDStr[:len(peerIDStr)-1])
 		if err != nil {
-			log.Warningf("Could not generate circuit: %s", err.Error())
-			log.Info("Waiting before retrying (peers are likely not ready)...")
-			<-time.After(1 * time.Minute)
-			log.Info("Retrying...")
+			log.Error("Invalid peer ID. Please enter a base58-encoded peer ID.")
 			continue
 		}
 
-		log.Infof("Circuit generated: %s", circuit)
-		break
+		err = eh.SendMessage(ctx, peerID, []byte(message))
+		if err != nil {
+			log.Error(err)
+		} else {
+			log.Info("Message sent. Check the log output of the recipient.")
+		}
 	}
-
-	log.Info("Press Ctrl+C to stop the node.")
-	select {}
 }
 
 func bootstrapConnections(ctx context.Context, host host.Host, bootstrapPeers []multiaddr.Multiaddr) error {
