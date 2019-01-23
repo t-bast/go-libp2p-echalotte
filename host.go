@@ -3,6 +3,7 @@ package echalotte
 import (
 	"context"
 	crand "crypto/rand"
+	"encoding/json"
 	"time"
 
 	pb "github.com/t-bast/go-libp2p-echalotte/pb"
@@ -64,7 +65,13 @@ func Connect(ctx context.Context, host host.Host, dht DHT, cb CircuitBuilder) (*
 		}
 	}
 
-	h.SetStreamHandler(ProtocolID, h.handleStream)
+	h.SetStreamHandler(ProtocolID, func(stream inet.Stream) {
+		ctx := context.Background()
+		err := h.HandleMessage(ctx, stream)
+		if err != nil {
+			log.Errorf("Message error: %s", err.Error())
+		}
+	})
 
 	// Test the network readiness by generating a sample circuit.
 	for {
@@ -171,10 +178,15 @@ func (h *Host) SendMessage(ctx context.Context, to peer.ID, message []byte) erro
 		}
 	}
 
-	// TODO: open stream to circuit relay.
-	// Send it the encrypted message.
+	firstHop := circuit[len(circuit)-1]
+	stream, err := h.NewStream(ctx, firstHop, ProtocolID)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	defer stream.Close()
 
-	return nil
+	enc := json.NewEncoder(stream)
+	return enc.Encode(m)
 }
 
 func (h *Host) peerEncryptionKey(ctx context.Context, peerID peer.ID) (*[32]byte, error) {
@@ -195,6 +207,59 @@ func (h *Host) peerEncryptionKey(ctx context.Context, peerID peer.ID) (*[32]byte
 	return &pubKey, nil
 }
 
-func (h *Host) handleStream(stream inet.Stream) {
-	// TODO: handle streams ;)
+// HandleMessage receives an onion message and forwards it.
+// If we are the message recipient we print it.
+func (h *Host) HandleMessage(ctx context.Context, stream inet.Stream) error {
+	defer stream.Close()
+
+	var message *OnionMessage
+
+	dec := json.NewDecoder(stream)
+	err := dec.Decode(&message)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	err = message.Validate(h.ID())
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	decryptionKey, err := h.DecryptionKey()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	message, err = message.Decapsulate(h.Peerstore().PrivKey(h.ID()), decryptionKey)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	if message.IsLastHop() {
+		from, _ := peer.IDFromBytes(message.From)
+		log.Infof("Private message received from %s: %s", from.Pretty(), message.Content)
+		return nil
+	}
+
+	go func() {
+		err := h.forwardMessage(context.Background(), message)
+		if err != nil {
+			log.Errorf("Could not forward message: %s", err.Error())
+		}
+	}()
+
+	return nil
+}
+
+// Forward a message to the next recipient.
+func (h *Host) forwardMessage(ctx context.Context, message *OnionMessage) error {
+	to, _ := peer.IDFromBytes(message.To)
+	stream, err := h.NewStream(ctx, to, ProtocolID)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	defer stream.Close()
+
+	enc := json.NewEncoder(stream)
+	return enc.Encode(message)
 }

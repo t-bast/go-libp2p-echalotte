@@ -14,6 +14,7 @@ import (
 	pb "github.com/t-bast/go-libp2p-echalotte/pb"
 
 	"gx/ipfs/QmNiJiXwWE3kRhZrC5ej3kSjWHm337pYfhjLGSCDNKJP2s/go-libp2p-crypto"
+	"gx/ipfs/QmPiemjiKBC9VA7vZF82m4x1oygtg2c2YVqag8PX7dN1BD/go-libp2p-peerstore"
 	"gx/ipfs/QmW7VUmSvhvSGbYbdsh7uRjhGmsYkc9fL8aJ5CorxxrU5N/go-crypto/nacl/box"
 	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
 	"gx/ipfs/QmdxUuburamoF6zF9qjeQC4WYcWGbWuRmdLacMEsW8ioD8/gogo-protobuf/proto"
@@ -183,14 +184,14 @@ func TestHost(t *testing.T) {
 			assert.True(t, strings.HasPrefix(err.Error(), "could not get encryption key"))
 		})
 
-		t.Run("success", func(t *testing.T) {
+		t.Run("peer not responding", func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
 			dht := echalottetesting.NewInMemoryDHT()
 
 			var relays []peer.ID
-			for i := 0; i < 10; i++ {
+			for i := 0; i < 5; i++ {
 				sk, _, _ := crypto.GenerateEd25519Key(crand.Reader)
 				pk, _, _ := box.GenerateKey(crand.Reader)
 				relayID, _ := peer.IDFromPrivateKey(sk)
@@ -212,6 +213,51 @@ func TestHost(t *testing.T) {
 			require.NoError(t, err)
 
 			err = h.SendMessage(ctx, alice, []byte("Au détour d'un sentier une charogne infâme"))
+			assert.Error(t, err)
+			assert.True(t, strings.HasPrefix(err.Error(), "dial attempt failed"))
+		})
+
+		t.Run("success", func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			dht := echalottetesting.NewInMemoryDHT()
+
+			var relays []peer.ID
+			var relaysKey []crypto.PrivKey
+			for i := 0; i < 5; i++ {
+				sk, _, _ := crypto.GenerateEd25519Key(crand.Reader)
+				pk, _, _ := box.GenerateKey(crand.Reader)
+				relayID, _ := peer.IDFromPrivateKey(sk)
+				relays = append(relays, relayID)
+				relaysKey = append(relaysKey, sk)
+
+				v := &echalotte.PublicKeyValidator{}
+				record, _ := v.CreateRecord(sk, pk)
+				dht.PutValue(ctx, v.CreateKey(relayID), record)
+			}
+
+			cb := echalottetesting.NewDummyCircuitBuilderFromNetwork(t, relays)
+
+			h1, err := echalotte.Connect(
+				ctx,
+				echalottetesting.RandomHost(ctx, t),
+				dht,
+				cb,
+			)
+			require.NoError(t, err)
+
+			h2, err := echalotte.Connect(
+				ctx,
+				echalottetesting.HostWithIdentity(ctx, t, relaysKey[4]),
+				dht,
+				cb,
+			)
+			require.NoError(t, err)
+
+			h1.Peerstore().AddAddrs(h2.ID(), h2.Addrs(), peerstore.AddressTTL)
+
+			err = h1.SendMessage(ctx, h2.ID(), []byte("Sur un lit semé de cailloux,"))
 			assert.NoError(t, err)
 		})
 	})
