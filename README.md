@@ -23,6 +23,7 @@ Here are the areas that require work to productize it:
 - [ ] Investigate circuit caching
 - [ ] Introduce mocks to get better test coverage (in particular stream testing)
 - [ ] Investigate known attacks on plain onion routing (outside of Tor)
+- [ ] Investigate MorphMix, Tarzan and other p2p onion-routing experiments (as opposed to Tor's client/server model)
 - [ ] Long-lived heterogeneous test network
 - [ ] Try attacking via network analysis
 - [ ] Investigate implementation at the transport level
